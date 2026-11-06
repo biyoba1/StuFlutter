@@ -3,31 +3,56 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Студенты · Supabase и Firebase</title>
+<title>StuFlutter · Студенты</title>
 <style>
+:root { color-scheme:light; --accent:#5457d6; --ink:#252747; --muted:#636780; --line:#e1e3ef }
 * { box-sizing:border-box }
-body { margin:0; background:#f1f5f3; color:#17312a; font:16px/1.5 system-ui,sans-serif }
-main { max-width:840px; margin:auto; padding:clamp(16px,5vw,48px) }
-h1 { font-size:clamp(42px,8vw,72px); line-height:1; margin:12px 0 }
-h2 { margin-top:0 }
-small { color:#385c50; font-weight:700; letter-spacing:.08em }
-section { padding:24px; margin:18px 0; border:1px solid #c8d9d1; border-radius:16px; background:white }
-label { display:grid; gap:5px; font-weight:600 }
-input,select,button { font:inherit; min-height:44px; padding:8px 12px; border:1px solid #94b2a5; border-radius:8px; background:white; color:inherit }
-button { cursor:pointer; font-weight:650 }
+body { margin:0; background:#f5f6fc; color:var(--ink); font:16px/1.6 system-ui,sans-serif }
+main { max-width:880px; margin:auto; padding:clamp(20px,5vw,48px) }
+header { padding:8px 0 20px }
+.brand { display:flex; align-items:center; gap:10px; color:var(--accent); font-weight:750; letter-spacing:.02em }
+.brand-icon { display:grid; place-items:center; width:38px; height:38px; border-radius:12px; background:var(--accent); color:white }
+h1 { font-size:clamp(38px,7vw,58px); line-height:1.12; letter-spacing:-.04em; margin:24px 0 12px }
+h2 { font-size:20px; line-height:1.3; margin:0 }
+p { color:var(--muted); margin:12px 0 }
+header p { max-width:580px; margin-bottom:0 }
+section { padding:clamp(20px,4vw,28px); margin:16px 0; border:1px solid var(--line); border-radius:20px; background:white; box-shadow:0 6px 24px #25274704 }
+.section-heading { display:flex; align-items:center; gap:12px; margin-bottom:20px }
+.step { display:grid; place-items:center; flex-shrink:0; width:32px; height:32px; border-radius:10px; background:#eff0ff; color:var(--accent); font-size:13px; font-weight:750 }
+label { display:grid; min-width:0; gap:8px; font-size:14px; font-weight:650 }
+input,select,button { font:inherit; min-height:46px; padding:10px 14px; border:1px solid var(--line); border-radius:12px; background:white; color:inherit }
+input,select { width:100%; background:#fafaff }
+input::placeholder { color:#797d94; font-weight:400 }
+input[type=checkbox] { width:18px; min-height:18px; height:18px; margin:0; accent-color:var(--accent) }
+button { cursor:pointer; font-size:14px; font-weight:650; transition:background .15s,border-color .15s }
+button:hover { background:#f1f2ff; border-color:#a5a7ee }
 button:disabled { opacity:.5; cursor:default }
-button[type=submit] { background:#154d3d; color:white; border-color:#154d3d }
-form { display:grid; gap:12px }
-.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center }
-li { margin-bottom:8px; overflow-wrap:anywhere }
+button[type=submit] { background:var(--accent); color:white; border-color:var(--accent); align-self:end }
+button[type=submit]:hover { background:#4447bd }
+input:focus-visible,select:focus-visible,button:focus-visible { outline:3px solid #c9cbff; outline-offset:3px }
+form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px }
+.row { display:flex; flex-wrap:wrap; gap:10px; align-items:center }
+.demo-option { margin-top:18px; font-size:14px }
+#method { display:inline-block; margin:12px 0 0; padding:4px 10px; border-radius:8px; background:#f1f2ff; color:#484bb1; font-size:13px; overflow-wrap:anywhere }
+#status:empty,#data-status:empty { display:none }
+#status { margin-bottom:0; font-size:14px }
+#account { justify-content:space-between }
+#username { flex:1 1 240px; overflow-wrap:anywhere }
+#student-list { list-style:none; padding:0; margin:16px 0 0 }
+li { margin-bottom:10px; padding:16px 18px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:12px; background:#fafaff; overflow-wrap:anywhere }
+footer { padding:12px 0 20px; color:var(--muted); font-size:13px; text-align:center }
+@media (max-width:540px) { form { grid-template-columns:1fr } #login button { flex:1 1 120px } }
 [hidden] { display:none !important }
 </style>
 </head>
 <body><main>
-<small>ПРАКТИКА ПО МОБИЛЬНОЙ РАЗРАБОТКЕ</small>
+<header>
+<div class="brand"><span class="brand-icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m2 9 10-5 10 5-10 5L2 9Z"/><path d="M6 11v6c4 3 8 3 12 0v-6M22 9v7"/></svg></span> StuFlutter</div>
 <h1>Студенты</h1>
 <p>Добавьте студента и сравните ручное обновление со списком, который меняется сам.</p>
+</header>
 <section>
+<div class="section-heading"><span class="step" aria-hidden="true">01</span><h2>Подключение</h2></div>
 <label>Вариант работы с базой
 <select id="mode">
 <option value="supabase-manual">1. Supabase · без Realtime</option>
@@ -36,11 +61,11 @@ li { margin-bottom:8px; overflow-wrap:anywhere }
 <option value="firebase-live">4. Firebase · с Realtime</option>
 </select></label>
 <p id="method"></p>
-<label class="row"><input id="demo" type="checkbox" checked> Локальная демонстрация</label>
+<label class="row demo-option"><input id="demo" type="checkbox" checked> Локальная демонстрация</label>
 <p>Для проверки Realtime откройте две вкладки с одной базой. Добавьте запись в одной и сравните списки.</p>
 </section>
 <section>
-<h2>Авторизация</h2>
+<div class="section-heading"><span class="step" aria-hidden="true">02</span><h2>Авторизация</h2></div>
 <div id="login" class="row">
 <button data-provider="github">GitHub</button>
 <button data-provider="google">Google / Gmail</button>
@@ -52,17 +77,18 @@ li { margin-bottom:8px; overflow-wrap:anywhere }
 <p id="status" role="status"></p>
 </section>
 <section id="students" hidden>
-<h2>Список студентов</h2>
+<div class="section-heading"><span class="step" aria-hidden="true">03</span><h2>Список студентов</h2></div>
 <form id="student-form">
-<label>Имя<input name="name" maxlength="100" required></label>
-<label>Специальность<input name="major" maxlength="120" required></label>
-<label>Год выпуска<input name="gradYear" type="number" min="1900" max="2200" step="1" required></label>
+<label>Имя<input name="name" placeholder="Алексей Смирнов" autocomplete="name" maxlength="100" required></label>
+<label>Специальность<input name="major" placeholder="Программная инженерия" maxlength="120" required></label>
+<label>Год выпуска<input name="gradYear" placeholder="2027" type="number" min="1900" max="2200" step="1" required></label>
 <button type="submit">Добавить студента</button>
 </form>
 <p><button id="refresh">Обновить список</button></p>
 <p id="data-status" role="status"></p>
 <ul id="student-list"></ul>
 </section>
+<footer>StuFlutter · Практика по мобильной разработке</footer>
 </main>
 <script type="module">
 // Только публичная конфигурация собственного проекта.

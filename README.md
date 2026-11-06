@@ -2,6 +2,8 @@
 
 Учебный проект по мобильной разработке. Форма из задания сохраняет имя, специальность и год выпуска. После входа приложение показывает имя пользователя, список студентов, форму добавления и кнопку «Выйти».
 
+Эта копия основана на [LisLisich/StudyFlutter](https://github.com/LisLisich/StudyFlutter). Веб-демонстрация и Flutter-приложение оформлены в единой фиолетовой палитре с карточками и обновлёнными полями ввода.
+
 ## 1. Запуск веб-демонстрации
 
 Откройте PowerShell в папке проекта и выполните:
@@ -50,7 +52,7 @@ node preview.cjs
 
 1. В ветке `main` стартовая страница находится в `docs/index.html`.
 2. В **Settings → Pages → Build and deployment** выберите **Deploy from a branch**, `main` и `/docs`.
-3. Проверьте адрес из Pages, обычно `https://lislisich.github.io/StudyFlutter/`. Для прямого открытия настроенного облачного режима добавьте к адресу `?cloud=1&mode=firebase-live`. [Инструкция GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
+3. Проверьте адрес из Pages, обычно `https://biyoba1.github.io/StuFlutter/`. Для прямого открытия настроенного облачного режима добавьте к адресу `?cloud=1&mode=firebase-live`. [Инструкция GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site).
 
 ## 6. Flutter
 

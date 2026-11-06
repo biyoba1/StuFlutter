@@ -24,7 +24,43 @@ Future<void> main() async {
     await sb.Supabase.initialize(url: supabaseUrl, publishableKey: supabaseKey);
   }
   if (databaseUrl.isNotEmpty) await Firebase.initializeApp();
-  runApp(const MaterialApp(home: StudentsPage(), debugShowCheckedModeBanner: false));
+  runApp(MaterialApp(
+    title: 'StuFlutter',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff5457d6)),
+      scaffoldBackgroundColor: const Color(0xfff5f6fc),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xfff5f6fc),
+        foregroundColor: Color(0xff252747),
+        centerTitle: false,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xfffafaff),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xffe1e3ef)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(0, 48),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    ),
+    home: const StudentsPage(),
+  ));
 }
 
 Future<void> loginExternal(String provider) async {
@@ -256,61 +292,140 @@ class _StudentsPageState extends State<StudentsPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Студенты')),
-    body: ListView(padding: const EdgeInsets.all(20), children: [
-      DropdownButton<int>(
-        value: mode, isExpanded: true,
-        items: List.generate(modes.length, (i) => DropdownMenuItem(value: i, child: Text(modes[i]))),
-        onChanged: busy ? null : (value) {
-          if (value == null || value == mode) return;
-          stopData();
-          view++;
-          setState(() { mode = value; uid = null; account = null; message = null; rows = []; });
-          observe();
-        },
-      ),
-      if (!configured) const Text('Добавьте настройки подключения согласно README.'),
-      if (configured && account == null)
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final entry in providers.entries)
-            OutlinedButton(
-              onPressed: busy || (!firebase && ['vk', 'yandex'].contains(entry.key))
-                  ? null : () => run(() => login(entry.key)),
-              child: Text(entry.value),
-            ),
+    appBar: AppBar(
+      leading: Icon(Icons.school_rounded, color: Theme.of(context).colorScheme.primary),
+      title: const Text('StuFlutter', style: TextStyle(fontWeight: FontWeight.w700)),
+    ),
+    body: Center(child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 760),
+      child: ListView(padding: const EdgeInsets.all(20), children: [
+        Text('Студенты', style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+          color: const Color(0xff252747),
+        )),
+        const SizedBox(height: 8),
+        const Text('Ваша учебная группа в одном месте.', style: TextStyle(color: Color(0xff636780))),
+        const SizedBox(height: 24),
+        panel('Подключение', Icons.storage_rounded, [
+          InputDecorator(
+            decoration: const InputDecoration(labelText: 'Вариант работы с базой'),
+            child: DropdownButtonHideUnderline(child: DropdownButton<int>(
+              value: mode, isExpanded: true, isDense: true,
+              items: List.generate(modes.length, (i) => DropdownMenuItem(value: i, child: Text(modes[i]))),
+              onChanged: busy ? null : (value) {
+                if (value == null || value == mode) return;
+                stopData();
+                view++;
+                setState(() { mode = value; uid = null; account = null; message = null; rows = []; });
+                observe();
+              },
+            )),
+          ),
+          if (!configured) ...[
+            const SizedBox(height: 16),
+            const Text('Добавьте настройки подключения согласно README.', style: TextStyle(color: Color(0xff636780))),
+          ],
         ]),
-      if (account != null) ...[
-        Text('Вы вошли как $account', style: Theme.of(context).textTheme.titleLarge),
-        OutlinedButton(onPressed: busy ? null : () => run(() async {
-          if (firebase) {
-            await auth.signOut();
-          } else {
-            await supabase.auth.signOut(scope: sb.SignOutScope.local);
-          }
-        }), child: const Text('Выйти')),
-        Form(key: form, child: Column(children: [
-          TextFormField(controller: name, maxLength: 100,
-            decoration: const InputDecoration(labelText: 'Имя'), validator: requiredText),
-          TextFormField(controller: major, maxLength: 120,
-            decoration: const InputDecoration(labelText: 'Специальность'), validator: requiredText),
-          TextFormField(controller: year, keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Год выпуска'),
-            validator: (text) {
-              final value = int.tryParse(text?.trim() ?? '');
-              return value == null || value < 1900 || value > 2200 ? 'От 1900 до 2200' : null;
-            }),
-          FilledButton(onPressed: busy ? null : () => run(insert), child: const Text('Добавить студента')),
-        ])),
-        TextButton(onPressed: busy ? null : refresh, child: const Text('Обновить список')),
-        if (rows.isEmpty) const Text('В списке пока нет записей.'),
-        for (final row in rows) ListTile(
-          title: Text(row['name'].toString()),
-          subtitle: Text('${row['major']} · выпуск ${row['gradYear']}'),
+        if (configured && account == null)
+          panel('Авторизация', Icons.lock_outline_rounded, [
+            const Text('Выберите удобный способ входа.'),
+            const SizedBox(height: 16),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final entry in providers.entries)
+                OutlinedButton(
+                  onPressed: busy || (!firebase && ['vk', 'yandex'].contains(entry.key))
+                      ? null : () => run(() => login(entry.key)),
+                  child: Text(entry.value),
+                ),
+            ]),
+          ]),
+        if (account != null) ...[
+          panel('Ваш профиль', Icons.account_circle_outlined, [
+            Text(account!, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(onPressed: busy ? null : () => run(() async {
+              if (firebase) {
+                await auth.signOut();
+              } else {
+                await supabase.auth.signOut(scope: sb.SignOutScope.local);
+              }
+            }), icon: const Icon(Icons.logout_rounded), label: const Text('Выйти')),
+          ]),
+          panel('Новый студент', Icons.person_add_alt_1_rounded, [
+            Form(key: form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              TextFormField(controller: name, maxLength: 100,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: 'Имя', hintText: 'Алексей Смирнов'), validator: requiredText),
+              const SizedBox(height: 8),
+              TextFormField(controller: major, maxLength: 120,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: 'Специальность', hintText: 'Программная инженерия'), validator: requiredText),
+              const SizedBox(height: 8),
+              TextFormField(controller: year, keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Год выпуска', hintText: '2027'),
+                validator: (text) {
+                  final value = int.tryParse(text?.trim() ?? '');
+                  return value == null || value < 1900 || value > 2200 ? 'От 1900 до 2200' : null;
+                }),
+              const SizedBox(height: 20),
+              FilledButton.icon(onPressed: busy ? null : () => run(insert),
+                icon: const Icon(Icons.add_rounded), label: const Text('Добавить студента')),
+            ])),
+          ]),
+          panel('Список студентов · ${rows.length}', Icons.groups_outlined, [
+            TextButton.icon(onPressed: busy ? null : refresh,
+              icon: const Icon(Icons.refresh_rounded), label: const Text('Обновить список')),
+            const SizedBox(height: 8),
+            if (rows.isEmpty) const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text('В списке пока нет записей. Добавьте первого студента выше.',
+                style: TextStyle(color: Color(0xff636780))),
+            ),
+            for (final row in rows) Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                tileColor: const Color(0xfff5f6fc),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xffe9eaff),
+                  child: Icon(Icons.person_outline_rounded, color: Theme.of(context).colorScheme.primary),
+                ),
+                title: Text(row['name'].toString()),
+                subtitle: Text('${row['major']} · выпуск ${row['gradYear']}'),
+              ),
+            ),
+          ]),
+        ],
+        if (busy) const LinearProgressIndicator(),
+        if (message != null) Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ),
-      ],
-      if (busy) const LinearProgressIndicator(),
-      if (message != null) Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-    ]),
+      ]),
+    )),
+  );
+
+  Widget panel(String title, IconData icon, List<Widget> children) => Card(
+    margin: const EdgeInsets.only(bottom: 16),
+    color: Colors.white,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: const BorderSide(color: Color(0xffe1e3ef)),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(icon, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 20),
+        ...children,
+      ]),
+    ),
   );
 
   String? requiredText(String? value) => (value ?? '').trim().isEmpty ? 'Заполните поле' : null;
