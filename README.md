@@ -12,7 +12,9 @@
 node preview.cjs
 ```
 
-Откройте [http://127.0.0.1:8080/](http://127.0.0.1:8080/). Локальная демонстрация включена по умолчанию. Она хранит вымышленные учебные записи в браузере и имитирует авторизацию. Облачные режимы работают после настройки собственных проектов и отключения галочки «Локальная демонстрация».
+Откройте [http://127.0.0.1:8080/](http://127.0.0.1:8080/). По умолчанию используется облачный Supabase. Введите email и пароль для входа или нажмите «Создать аккаунт», подтвердите email по ссылке из письма и войдите. Добавленные студенты сохраняются в `public.lab_students` нового проекта.
+
+Для проверки без облака включите «Локальная демонстрация» или добавьте к адресу `?cloud=0`. Демонстрация хранит вымышленные учебные записи только в браузере и имитирует авторизацию.
 
 | Вариант | Чтение | Добавление | Что происходит при записи из другой вкладки |
 | --- | --- | --- | --- |
@@ -25,10 +27,12 @@ node preview.cjs
 
 ## 2. Supabase
 
+По умолчанию веб-версия и Flutter подключаются к [проекту biyoba1](https://supabase.com/dashboard/project/hrehlbrtngybrxpldant). Данные находятся в таблице `public.lab_students`. В клиентском коде используется только публичный publishable key; пароль PostgreSQL не нужен для запуска приложения и не хранится в репозитории. Для Flutter параметры `SUPABASE_URL` и `SUPABASE_KEY` позволяют переопределить проект.
+
 1. Создайте проект в [Supabase Dashboard](https://supabase.com/dashboard). В SQL Editor выполните `setup/supabase.sql`. Скрипт создаёт отдельную таблицу `public.lab_students`, выдаёт вошедшим пользователям права на чтение и добавление, включает RLS и добавляет таблицу в публикацию `supabase_realtime`.
 2. Укажите Project URL и publishable key в `config.supabaseUrl` и `config.supabaseKey` внутри `docs/index.html`.
 3. В **Authentication → URL Configuration** укажите адрес сайта и разрешите возврат на адрес страницы. При точной настройке добавьте варианты URL с `?cloud=1&mode=supabase-manual` и `?cloud=1&mode=supabase-live`. Для Flutter добавьте `studentslab://auth`.
-4. В **Authentication → Sign In / Providers** включите Google, GitHub и Apple. Для OAuth-приложений у провайдеров используйте callback, показанный в настройках Supabase, обычно `https://PROJECT.supabase.co/auth/v1/callback`. Укажите Client ID и секреты в кабинете Supabase. Подробности есть в документации [Google](https://supabase.com/docs/guides/auth/social-login/auth-google), [GitHub](https://supabase.com/docs/guides/auth/social-login/auth-github) и [Apple](https://supabase.com/docs/guides/auth/social-login/auth-apple).
+4. В **Authentication → Sign In / Providers** используется Email. Подтверждение email остаётся включённым. Для отправки писем произвольным пользователям настройте собственный SMTP; встроенный почтовый сервис Supabase предназначен для ограниченного тестирования. Вариант Supabase в приложении использует email и пароль; настройки социальных провайдеров для него не нужны.
 
 ## 3. Firebase
 
@@ -64,7 +68,7 @@ node preview.cjs
 4. Запустите с публичной конфигурацией проекта. Параметр `GOOGLE_SERVER_CLIENT_ID` содержит Web OAuth Client ID Google, если он не подхватывается из платформенной конфигурации. Параметр `OAUTH_URL` нужен для Яндекса и VK.
 
 ```powershell
-flutter run --dart-define=SUPABASE_URL=https://PROJECT.supabase.co --dart-define=SUPABASE_KEY=sb_publishable_REPLACE --dart-define=FIREBASE_DATABASE_URL=https://studyflutter-6a402-default-rtdb.europe-west1.firebasedatabase.app --dart-define=GOOGLE_SERVER_CLIENT_ID=REPLACE.apps.googleusercontent.com --dart-define=OAUTH_URL=https://oauth.example.com
+flutter run --dart-define=FIREBASE_DATABASE_URL=https://studyflutter-6a402-default-rtdb.europe-west1.firebasedatabase.app --dart-define=GOOGLE_SERVER_CLIENT_ID=REPLACE.apps.googleusercontent.com --dart-define=OAUTH_URL=https://oauth.example.com
 ```
 
 [Flutter и Firebase](https://firebase.google.com/docs/flutter/setup) · [Вход через провайдеров во Flutter](https://firebase.google.com/docs/auth/flutter/federated-auth) · [Глубокие ссылки Supabase](https://supabase.com/docs/guides/auth/native-mobile-deep-linking)

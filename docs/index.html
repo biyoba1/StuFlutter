@@ -36,6 +36,7 @@ form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px }
 #method { display:inline-block; margin:12px 0 0; padding:4px 10px; border-radius:8px; background:#f1f2ff; color:#484bb1; font-size:13px; overflow-wrap:anywhere }
 #status:empty,#data-status:empty { display:none }
 #status { margin-bottom:0; font-size:14px }
+#email-form .row { grid-column:1/-1 }
 #account { justify-content:space-between }
 #username { flex:1 1 240px; overflow-wrap:anywhere }
 #student-list { list-style:none; padding:0; margin:16px 0 0 }
@@ -61,7 +62,7 @@ footer { padding:12px 0 20px; color:var(--muted); font-size:13px; text-align:cen
 <option value="firebase-live">4. Firebase · с Realtime</option>
 </select></label>
 <p id="method"></p>
-<label class="row demo-option"><input id="demo" type="checkbox" checked> Локальная демонстрация</label>
+<label class="row demo-option"><input id="demo" type="checkbox"> Локальная демонстрация</label>
 <p>Для проверки Realtime откройте две вкладки с одной базой. Добавьте запись в одной и сравните списки.</p>
 </section>
 <section>
@@ -73,6 +74,11 @@ footer { padding:12px 0 20px; color:var(--muted); font-size:13px; text-align:cen
 <button data-provider="yandex">Яндекс ID</button>
 <button data-provider="vk">VK ID</button>
 </div>
+<form id="email-form" hidden>
+<label>Email<input name="email" type="email" autocomplete="username" placeholder="you@example.com" required></label>
+<label>Пароль<input name="password" type="password" autocomplete="current-password" minlength="6" placeholder="Не менее 6 символов" required></label>
+<div class="row"><button type="submit">Войти</button><button id="email-signup" type="button">Создать аккаунт</button></div>
+</form>
 <div id="account" class="row" hidden><strong id="username"></strong><button id="link-github" hidden>Привязать GitHub</button><button id="logout">Выйти</button></div>
 <p id="status" role="status"></p>
 </section>
@@ -93,8 +99,8 @@ footer { padding:12px 0 20px; color:var(--muted); font-size:13px; text-align:cen
 <script type="module">
 // Только публичная конфигурация собственного проекта.
 const config = {
-  supabaseUrl: 'https://rcqzrdwwgnbtlnheaphz.supabase.co',
-  supabaseKey: 'sb_publishable_ZeqmpDB1Agx-mZPyeWt04w_JDdHpF3U',
+  supabaseUrl: 'https://hrehlbrtngybrxpldant.supabase.co',
+  supabaseKey: 'sb_publishable_0OD_VkwYjCIkgZo0ghoU4g_l4oS8sbn',
   firebase: {
     apiKey: 'AIzaSyA4983eqcZ8MrZQ9lRF4MWVFnVPUiHtFLQ',
     authDomain: 'studyflutter-6a402.firebaseapp.com',
@@ -116,9 +122,10 @@ const methods = {
 };
 const query = new URLSearchParams(location.search);
 mode.value = Object.hasOwn(methods, query.get('mode')) ? query.get('mode') : 'supabase-manual';
-demo.checked = query.get('cloud') !== '1';
+demo.checked = query.get('cloud') === '0';
 const providers = {github:'GitHub', google:'Google', apple:'Apple', yandex:'Яндекс ID', vk:'VK ID'};
 let adapter, user, stopAuth, stopData, version = 0, view = 0, readNumber = 0;
+let emailBusy = false;
 const cloud = new Map();
 
 function localAdapter(service) {
@@ -162,6 +169,13 @@ async function makeSupabase() {
     async login(provider) {
       const {error} = await client.auth.signInWithOAuth({provider,options:{redirectTo:returnUrl()}});
       if (error) throw error;
+    },
+    async email(email,password,signup) {
+      const {data,error} = signup
+        ? await client.auth.signUp({email,password,options:{emailRedirectTo:returnUrl()}})
+        : await client.auth.signInWithPassword({email,password});
+      if (error) throw error;
+      return signup && !data.session;
     },
     async logout() { const {error} = await client.auth.signOut({scope:'local'}); if (error) throw error; },
     async read() {
@@ -265,10 +279,15 @@ function showUser(next) {
   stopData?.();
   stopData = undefined;
   const current = ++view;
-  $('login').hidden = !!user;
+  const emailAvailable = !!adapter?.email;
+  $('login').hidden = !!user || emailAvailable;
+  $('email-form').hidden = !!user || !emailAvailable;
   $('account').hidden = $('students').hidden = !user;
   $('student-list').replaceChildren();
   $('username').textContent = user?.name || user || '';
+  if (emailAvailable && !emailBusy) $('status').textContent = user
+    ? 'Вы вошли. Данные сохраняются в Supabase.'
+    : 'Войдите по email или создайте аккаунт. После регистрации подтвердите почту.';
   if (!user) return;
   $('data-status').textContent = 'Загрузка…';
   if (mode.value.endsWith('-live')) {
@@ -283,6 +302,7 @@ function showUser(next) {
 async function connect() {
   const current = ++version;
   stopAuth?.();
+  $('email-form').reset();
   showUser(null);
   adapter = undefined;
   const service = mode.value.split('-')[0];
@@ -298,7 +318,8 @@ async function connect() {
     if (current !== version) return;
     adapter = instance;
     const status = $('status');
-    status.textContent = demo.checked ? 'Учебные данные этого браузера. Кнопки имитируют вход.' : 'Облачный режим';
+    status.textContent = demo.checked ? 'Учебные данные этого браузера. Кнопки имитируют вход.'
+      : service === 'supabase' ? 'Войдите по email или создайте аккаунт. После регистрации подтвердите почту.' : 'Облачный режим';
     if (!demo.checked && service === 'supabase') {
       const fragment = new URLSearchParams(location.hash.slice(1));
       const detail = query.get('error_description') || fragment.get('error_description')
@@ -360,6 +381,35 @@ $('login').onclick = async event => {
       : error.message;
   }
 };
+
+async function loginEmail(signup) {
+  const emailForm = $('email-form');
+  if (emailBusy || !emailForm.reportValidity() || !adapter?.email) return;
+  const selected = version, currentAdapter = adapter;
+  const values = new FormData(emailForm), buttons = emailForm.querySelectorAll('button');
+  emailBusy = true;
+  buttons.forEach(button => { button.disabled = true; });
+  $('status').textContent = signup ? 'Создание аккаунта…' : 'Вход…';
+  try {
+    const confirm = await currentAdapter.email(values.get('email').trim(),values.get('password'),signup);
+    if (selected !== version) return;
+    emailForm.elements.password.value = '';
+    $('status').textContent = confirm
+      ? 'Аккаунт создан. Подтвердите email по ссылке из письма, затем войдите.' : 'Вы вошли. Данные сохраняются в Supabase.';
+  } catch (error) {
+    if (selected === version) $('status').textContent = ({
+      invalid_credentials: 'Неверный email или пароль.',
+      email_not_confirmed: 'Подтвердите email по ссылке из письма, затем войдите.',
+      over_email_send_rate_limit: 'Слишком много писем. Подождите перед повторной регистрацией.',
+      email_address_not_authorized: 'Этот адрес пока не разрешён для регистрации. Обратитесь к владельцу приложения.',
+    })[error.code] || error.message;
+  } finally {
+    emailBusy = false;
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+$('email-form').onsubmit = event => { event.preventDefault(); void loginEmail(false); };
+$('email-signup').onclick = () => void loginEmail(true);
 
 $('link-github').onclick = async () => {
   const current = view;

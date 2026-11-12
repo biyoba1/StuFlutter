@@ -12,8 +12,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
-const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const supabaseKey = String.fromEnvironment('SUPABASE_KEY');
+const supabaseUrl = String.fromEnvironment(
+  'SUPABASE_URL', defaultValue: 'https://hrehlbrtngybrxpldant.supabase.co',
+);
+const supabaseKey = String.fromEnvironment(
+  'SUPABASE_KEY', defaultValue: 'sb_publishable_0OD_VkwYjCIkgZo0ghoU4g_l4oS8sbn',
+);
 const databaseUrl = String.fromEnvironment('FIREBASE_DATABASE_URL');
 const oauthUrl = String.fromEnvironment('OAUTH_URL');
 const googleClient = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
@@ -106,11 +110,14 @@ class _StudentsPageState extends State<StudentsPage> {
     'yandex': 'Яндекс ID', 'vk': 'VK ID',
   };
   final form = GlobalKey<FormState>();
+  final emailForm = GlobalKey<FormState>();
+  final email = TextEditingController();
+  final password = TextEditingController();
   final name = TextEditingController();
   final major = TextEditingController();
   final year = TextEditingController();
   int mode = 0, view = 0, request = 0;
-  bool busy = false;
+  bool busy = false, messageIsError = false;
   String? account, uid, message;
   List<Map<String, dynamic>> rows = [];
   StreamSubscription<dynamic>? authChanges, dataChanges;
@@ -219,12 +226,12 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 
   void showError(Object error) {
-    if (mounted) setState(() => message = error.toString());
+    if (mounted) setState(() { message = error.toString(); messageIsError = true; });
   }
 
   Future<void> run(Future<void> Function() task) async {
     if (busy) return;
-    setState(() { busy = true; message = null; });
+    setState(() { busy = true; message = null; messageIsError = false; });
     try {
       await task();
     } catch (error) {
@@ -261,6 +268,26 @@ class _StudentsPageState extends State<StudentsPage> {
     }
   }
 
+  Future<void> loginEmail({bool signup = false}) async {
+    if (!emailForm.currentState!.validate()) return;
+    if (signup) {
+      final response = await supabase.auth.signUp(
+        email: email.text.trim(), password: password.text,
+        emailRedirectTo: 'studentslab://auth',
+      );
+      if (!mounted) return;
+      password.clear();
+      if (response.session == null) {
+        setState(() => message = 'Аккаунт создан. Подтвердите email по ссылке из письма, затем войдите.');
+      }
+    } else {
+      await supabase.auth.signInWithPassword(
+        email: email.text.trim(), password: password.text,
+      );
+      if (mounted) password.clear();
+    }
+  }
+
   Future<void> insert() async {
     if (!form.currentState!.validate()) return;
     final current = view;
@@ -287,6 +314,8 @@ class _StudentsPageState extends State<StudentsPage> {
     name.dispose();
     major.dispose();
     year.dispose();
+    email.dispose();
+    password.dispose();
     super.dispose();
   }
 
@@ -316,6 +345,7 @@ class _StudentsPageState extends State<StudentsPage> {
                 if (value == null || value == mode) return;
                 stopData();
                 view++;
+                password.clear();
                 setState(() { mode = value; uid = null; account = null; message = null; rows = []; });
                 observe();
               },
@@ -328,16 +358,51 @@ class _StudentsPageState extends State<StudentsPage> {
         ]),
         if (configured && account == null)
           panel('Авторизация', Icons.lock_outline_rounded, [
-            const Text('Выберите удобный способ входа.'),
-            const SizedBox(height: 16),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final entry in providers.entries)
-                OutlinedButton(
-                  onPressed: busy || (!firebase && ['vk', 'yandex'].contains(entry.key))
-                      ? null : () => run(() => login(entry.key)),
-                  child: Text(entry.value),
+            if (!firebase) Form(key: emailForm, child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Войдите по email или создайте аккаунт. После регистрации подтвердите почту.'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: email,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
+                  autocorrect: false,
+                  decoration: const InputDecoration(labelText: 'Email', hintText: 'you@example.com'),
+                  validator: (value) => RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value?.trim() ?? '')
+                      ? null : 'Введите корректный email',
                 ),
-            ]),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: password,
+                  obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const [AutofillHints.password],
+                  decoration: const InputDecoration(labelText: 'Пароль', hintText: 'Не менее 6 символов'),
+                  validator: (value) => (value?.length ?? 0) >= 6 ? null : 'Не менее 6 символов',
+                  onFieldSubmitted: (_) { if (!busy) unawaited(run(() => loginEmail())); },
+                ),
+                const SizedBox(height: 20),
+                FilledButton(onPressed: busy ? null : () => run(() => loginEmail()), child: const Text('Войти')),
+                const SizedBox(height: 8),
+                OutlinedButton(onPressed: busy ? null : () => run(() => loginEmail(signup: true)),
+                  child: const Text('Создать аккаунт')),
+              ],
+            )),
+            if (firebase) ...[
+              const Text('Выберите удобный способ входа.'),
+              const SizedBox(height: 16),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final entry in providers.entries)
+                  OutlinedButton(
+                    onPressed: busy ? null : () => run(() => login(entry.key)),
+                    child: Text(entry.value),
+                  ),
+              ]),
+            ],
           ]),
         if (account != null) ...[
           panel('Ваш профиль', Icons.account_circle_outlined, [
@@ -400,7 +465,8 @@ class _StudentsPageState extends State<StudentsPage> {
         if (busy) const LinearProgressIndicator(),
         if (message != null) Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Text(message!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          child: Text(message!, style: TextStyle(color: messageIsError
+              ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary)),
         ),
       ]),
     )),
